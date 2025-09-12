@@ -1,0 +1,28 @@
+use.miden::account
+use.miden::tx
+use.std::sys
+
+const.NAME_MAP_SLOT_IDX=0
+
+#! Registers the provided name in the contract.
+#!
+#! Inputs:  [NAME, pad(12)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - The provided name is already registered.
+export.register
+    push.0.0.0.1 swapw
+    push.NAME_MAP_SLOT_IDX
+    # => [index, NAME, IS_REGISTERED, pad(16)]
+
+    exec.account::set_map_item dropw
+    # => [PREV_VALUE, pad(16)]
+    # => [[is_already_registered, 0, 0, 0], pad(16)]
+
+    assertz.err="name is already registered"
+    # => [0, 0, 0, pad(16)]
+
+    drop drop drop
+    # => [pad(16)]
+end
