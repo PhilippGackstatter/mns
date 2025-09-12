@@ -38,7 +38,6 @@ export function encodeName(s: string): Word {
     capacity++;
 
     // If this Felt is "full", move to next
-    // Rule of thumb: about 16 chars per Felt at base-26 fits comfortably
     if (capacity >= MAX_CHARS_PER_FELT && currentFelt < FELTS_PER_WORD) {
       felts[currentFelt] = encoded;
       currentFelt++;
@@ -53,6 +52,50 @@ export function encodeName(s: string): Word {
   }
 
   return Word.newFromFelts(felts.map(f => new Felt(f)));
+}
+
+// Decodes a Word (4 Felts) back into a string
+export function decodeName(word: Word): string {
+  const felts = word.toFelts();
+
+  // First Felt stores the length
+  // Create a temporary Word with just this Felt to use toHex
+  const lengthWord = Word.newFromFelts([felts[0], new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0))]);
+  const length = Number(BigInt("0x" + lengthWord.toHex().slice(-16)));
+
+  if (length === 0) {
+    return "";
+  }
+
+  if (length > MAX_TOTAL_SYMBOL_LENGTH) {
+    throw new Error(`InvalidLength: ${length}`);
+  }
+
+  let result = "";
+  let remaining = length;
+
+  // Decode characters from the remaining 3 Felts
+  for (let feltIndex = 1; feltIndex < FELTS_PER_WORD && remaining > 0; feltIndex++) {
+    // Create a temporary Word with just this Felt to use toHex
+    const feltWord = Word.newFromFelts([felts[feltIndex], new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0))]);
+    let encoded = BigInt("0x" + feltWord.toHex().slice(-16));
+
+    // Determine how many characters are in this Felt
+    const charsInThisFelt = Math.min(remaining, MAX_CHARS_PER_FELT);
+
+    // Extract characters from this Felt (in reverse order since we encoded with base-26 multiplication)
+    const chars: string[] = [];
+    for (let i = 0; i < charsInThisFelt; i++) {
+      const digit = Number(encoded % ALPHABET_LENGTH);
+      chars.unshift(String.fromCharCode(A_CODE + digit));
+      encoded = encoded / ALPHABET_LENGTH;
+    }
+
+    result += chars.join("");
+    remaining -= charsInThisFelt;
+  }
+
+  return result;
 }
 
 export async function registerName(name: string, accountId: AccountId): Promise<string> {
