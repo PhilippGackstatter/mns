@@ -1,24 +1,61 @@
-# Miden Web App
+# Miden Name Service (MNS)
 
-A starter template for building web applications powered by Miden blockchain technology.
+A decentralized name service built on the Miden blockchain that allows users to register human-readable names and associate them with their Miden account IDs.
 
-## Features
+> [!NOTE]
+> This project is a proof of concept and has limited features.
 
-- ✅ Next.js 15 with React 19
-- ✅ Miden SDK integration
-- ✅ Miden Wallet Adapter for seamless wallet connectivity
-- ✅ TypeScript support
-- ✅ Tailwind CSS for styling
-- ✅ Ready-to-use Miden library functions
+## Overview
+
+The Miden Name Service (MNS) is a blockchain-based naming system that provides:
+
+- **Name Registration**: Register lowercase alphabetic names (a-z, up to 36 characters) 
+- **Account Mapping**: Associate names with Miden account IDs
+- **Smart Contract Backend**: Implemented in Miden Assembly (MASM) for on-chain storage and validation
+- **Web Interface**: React/Next.js frontend with Miden wallet integration
+
+## Architecture
+
+### Smart Contract (`masm/accounts/name_service.masm`)
+- Stores name-to-account mappings in contract storage
+- Prevents duplicate name registration
+- Validates account IDs are non-empty
+- Written in Miden Assembly for execution on Miden VM
+
+### Frontend (`app/`)
+- Next.js 15 with React 19
+- Miden wallet adapter for seamless wallet connectivity
+- Real-time name validation and registration interface
+- TypeScript support with Tailwind CSS styling
+
+### Backend Tools (`mns/`)
+- Rust-based CLI tools for name service deployment and management
+- Miden client integration for blockchain interactions
+- SQLite storage for local state management
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- npm or pnpm
+- Rust toolchain (for backend tools)
+- Miden wallet compatible with the testnet
 
-### Installation
+### Deployment
+
+1. Navigate to the `mns/` directory:
+   ```bash
+   cd mns
+   ```
+
+2. Build the tools:
+   ```bash
+   cargo run --release --bin deploy_name_service
+   ```
+
+Copy the account ID and replace `NAME_SERVICE_ACCOUNT_ID` in `constants.ts`.
+
+### Frontend Setup
 
 1. Install dependencies:
    ```bash
@@ -31,44 +68,3 @@ A starter template for building web applications powered by Miden blockchain tec
    ```
 
 3. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Building for Production
-
-```bash
-npm run build
-npm start
-```
-
-## Structure
-
-- `app/` - Next.js app directory with pages and components
-- `lib/` - Utility functions and Miden integration code
-  - `constants.ts` - Configuration constants
-  - `contracts/` - Smart contract code
-  - `notes/` - Note templates
-  - Various utility functions for Miden operations
-
-## Available Library Functions
-
-This template includes several ready-to-use functions:
-
-- `createGame` - Create a new game instance
-- `findGame` - Find and validate game state
-- `makeMove` - Execute moves in games
-- `endGame` - End game sessions
-- `createMintConsume` - Handle asset minting and consumption
-- `getAccountId` - Retrieve account information
-- And more...
-
-## Customization
-
-1. Update the app name in `app/providers.tsx`
-2. Modify the UI components in `app/page.tsx`
-3. Add your own smart contracts in `lib/contracts/`
-4. Create custom note templates in `lib/notes/`
-
-## Learn More
-
-- [Miden VM Documentation](https://docs.polygon.technology/miden/)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Miden SDK](https://github.com/0xMiden/miden-sdk)
