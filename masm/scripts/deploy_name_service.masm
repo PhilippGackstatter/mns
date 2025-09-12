@@ -1,8 +1,10 @@
 use.name_service::code
 
 begin
-    # register the empty word
+    # register the empty word so the account is modified during the creation tx
+    push.0.0.0.1
     push.0.0.0.0
+    # => [NAME, ACCOUNT_ID]
     call.code::register
-    dropw
+    dropw dropw
 end
