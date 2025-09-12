@@ -11,6 +11,7 @@ const.NAME_MAP_SLOT_IDX=0
 #!
 #! Panics if:
 #! - The provided name is already registered.
+#! - The provided account ID word is the empty word.
 export.register
     swapw
     # => [ACCOUNT_ID, NAME, pad(8)]

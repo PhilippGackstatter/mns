@@ -1,24 +1,12 @@
-import { instantiateClient } from "./utils";
-import { NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
+import { A_CODE as a_CODE, ALPHABET_LENGTH, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
 import { Account, AccountId, Felt, WebClient, Word } from "@demox-labs/miden-sdk";
-
-const MAX_SYMBOL_LENGTH = 6; // per Felt
-const FELTS_PER_WORD = 4;
-const TOTAL_SYMBOL_LENGTH = MAX_SYMBOL_LENGTH * FELTS_PER_WORD; // 24
-const MAX_CHARS_PER_FELT = 12;
-const MAX_TOTAL_SYMBOL_LENGTH = MAX_CHARS_PER_FELT * (FELTS_PER_WORD - 1);
-const ALPHABET_LENGTH = BigInt(26);
-const A_CODE = "A".charCodeAt(0);
-
-type DecodeResult = string;
-
 
 // Encodes a string into 4 Felts
 export function encodeName(s: string): Word {
-  if (s.length === 0 || s.length > MAX_TOTAL_SYMBOL_LENGTH) {
+  if (s.length === 0 || s.length > MAX_TOTAL_NAME_LENGTH) {
     throw new Error(`InvalidLength: ${s.length}`);
   }
-  if ([...s].some(c => c < "A" || c > "Z")) {
+  if ([...s].some(c => c < "a" || c > "z")) {
     throw new Error(`InvalidCharacter: ${s}`);
   }
 
@@ -33,7 +21,7 @@ export function encodeName(s: string): Word {
   let capacity = 0;
 
   for (const char of s) {
-    const digit = BigInt(char.charCodeAt(0) - A_CODE);
+    const digit = BigInt(char.charCodeAt(0) - a_CODE);
     encoded = encoded * ALPHABET_LENGTH + digit;
     capacity++;
 
@@ -67,7 +55,7 @@ export function decodeName(word: Word): string {
     return "";
   }
 
-  if (length > MAX_TOTAL_SYMBOL_LENGTH) {
+  if (length > MAX_TOTAL_NAME_LENGTH) {
     throw new Error(`InvalidLength: ${length}`);
   }
 
@@ -87,7 +75,7 @@ export function decodeName(word: Word): string {
     const chars: string[] = [];
     for (let i = 0; i < charsInThisFelt; i++) {
       const digit = Number(encoded % ALPHABET_LENGTH);
-      chars.unshift(String.fromCharCode(A_CODE + digit));
+      chars.unshift(String.fromCharCode(a_CODE + digit));
       encoded = encoded / ALPHABET_LENGTH;
     }
 
@@ -105,8 +93,9 @@ export async function registerName(name: string, accountId: AccountId): Promise<
   }
 
   // Encode symbol to field elements
-  const encodedWord = encodeName(name.toUpperCase());
+  const encodedWord = encodeName(name);
 
+  // Must match masm/accounts/name_service.masm.
   const nameServiceCode = `
 use.miden::account
 use.miden::tx
@@ -121,6 +110,7 @@ const.NAME_MAP_SLOT_IDX=0
 #!
 #! Panics if:
 #! - The provided name is already registered.
+#! - The provided account ID word is the empty word.
 export.register
     swapw
     # => [ACCOUNT_ID, NAME, pad(8)]
@@ -207,7 +197,8 @@ end
   // Submitting the transaction result to the node
   await client.submitTransaction(txResult);
 
-  console.log(`Submitted transaction ${txResult.executedTransaction().id().toHex()}`);
+  const txId = txResult.executedTransaction().id().toHex();
+  console.log(`Submitted transaction ${txId}`);
 
   // Sync state
   await client.syncState();
@@ -215,5 +206,5 @@ end
   console.log("Synced state");
 
   // Return success message with transaction info
-  return `Name registration submitted successfully`;
+  return txId;
 }
