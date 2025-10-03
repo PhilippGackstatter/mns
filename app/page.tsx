@@ -264,7 +264,7 @@ export default function Home() {
                       : "bg-transparent text-gray-400 hover:text-gray-200"
                       }`}
                   >
-                    Register Name
+                    Register
                   </button>
                   <button
                     onClick={() => setActiveTab("lookup")}
@@ -273,7 +273,7 @@ export default function Home() {
                       : "bg-transparent text-gray-400 hover:text-gray-200"
                       }`}
                   >
-                    Lookup Name
+                    Lookup
                   </button>
                   <button
                     onClick={() => setActiveTab("send")}
@@ -282,7 +282,7 @@ export default function Home() {
                       : "bg-transparent text-gray-400 hover:text-gray-200"
                       }`}
                   >
-                    Send To Name
+                    Send
                   </button>
                 </div>
 
