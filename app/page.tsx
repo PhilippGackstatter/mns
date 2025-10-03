@@ -4,10 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { registerName, lookupName } from "../lib/nameService";
-import { Address } from "@demox-labs/miden-sdk";
+import { Address, NetworkId } from "@demox-labs/miden-sdk";
 import { MAX_TOTAL_NAME_LENGTH } from "@/lib/constants";
+import { CustomTransaction, SendTransaction, Transaction, TransactionType } from "@demox-labs/miden-wallet-adapter-base";
+import { MidenWalletAdapter } from "@demox-labs/miden-wallet-adapter";
 
-type Tab = "register" | "lookup";
+type Tab = "register" | "lookup" | "send";
 
 export default function Home() {
   const [message, setMessage] = useState<string>("Connect your wallet to register names in the Miden Name Service.");
@@ -18,12 +20,17 @@ export default function Home() {
   const [lookupNameInput, setLookupNameInput] = useState<string>("");
   const [isLookingUp, setIsLookingUp] = useState<boolean>(false);
   const [lookupResult, setLookupResult] = useState<string>("");
+  const [sendNameInput, setSendNameInput] = useState<string>("");
+  const [sendAmount, setSendAmount] = useState<string>("");
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [sendResult, setSendResult] = useState<string>("");
 
   const {
     wallet,
     accountId: rawAccountId,
     connected,
     requestTransaction,
+    requestAssets
   } = useWallet();
 
   useEffect(() => {
@@ -98,7 +105,7 @@ export default function Home() {
     try {
       const accountId = await lookupName(lookupNameInput);
       if (accountId) {
-        setLookupResult(accountId.prefix().toString());
+        setLookupResult(Address.fromAccountId(accountId, "Unspecified").toBech32(NetworkId.Testnet));
         setMessage(`Name "${lookupNameInput}" is registered!`);
       } else {
         setLookupResult("not_found");
@@ -109,6 +116,108 @@ export default function Home() {
       setMessage(`Lookup failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsLookingUp(false);
+    }
+  };
+
+  const handleSendNameChange = (value: string) => {
+    const filteredValue = value.toLowerCase().replace(/[^a-z]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH);
+    setSendNameInput(filteredValue);
+  };
+
+  const handleSendAmountChange = (value: string) => {
+    // Only allow numbers and decimal point
+    const filteredValue = value.replace(/[^0-9.]/g, '');
+    // Ensure only one decimal point
+    const parts = filteredValue.split('.');
+    if (parts.length > 2) {
+      return;
+    }
+    setSendAmount(filteredValue);
+  };
+
+  const handleSendToName = async () => {
+    if (!connected) {
+      setMessage("Please connect your wallet first!");
+      return;
+    }
+
+    if (!sendNameInput.trim()) {
+      setMessage("Please enter a name!");
+      return;
+    }
+
+    if (!sendAmount.trim() || parseFloat(sendAmount) <= 0) {
+      setMessage("Please enter a valid amount!");
+      return;
+    }
+
+    setIsSending(true);
+    setSendResult("");
+    setMessage("Looking up name and initiating transaction...");
+
+    try {
+      // First lookup the name to get the account ID
+      const recipientAccountId = await lookupName(sendNameInput);
+      if (!recipientAccountId) {
+        setMessage(`Name "${sendNameInput}" is not registered.`);
+        setIsSending(false);
+        return;
+      }
+
+      const recipientId = recipientAccountId.toString();
+      setMessage(`Name resolved to ${recipientId}... Initiating send...`);
+
+      // Request available assets through the wallet adapter
+      if (!requestAssets) {
+        setMessage("Asset request not available. Please reconnect your wallet.");
+        return;
+      }
+
+      const assets = await requestAssets();
+      if (assets.length === 0) {
+        setMessage("No assets available to send. Please receive an asset into your wallet first.");
+        return;
+      }
+      // SAFETY: At least one asset should be available.
+      const asset = assets.pop()!
+
+      let sendAmountBigInt = BigInt(sendAmount)
+      if (sendAmountBigInt > BigInt(asset.amount)) {
+        setMessage(`Attempted to send ${sendAmountBigInt} but only ${asset.amount} of asset ${asset.faucetId} is available.`);
+        return;
+      }
+      // Questionable conversion
+      let sendAmountNum = Number(sendAmountBigInt) * 1_000_000
+
+      // Request the transaction through the wallet adapter
+      if (!requestTransaction) {
+        setMessage("Transaction request not available. Please reconnect your wallet.");
+        return;
+      }
+
+      const midenTransaction = new SendTransaction(
+        rawAccountId!,
+        recipientId,
+        asset.faucetId,
+        'public',
+        sendAmountNum
+      );
+
+      const txId =
+        (await (wallet?.adapter as MidenWalletAdapter).requestSend(
+          midenTransaction
+        ));
+
+      console.log(`done request send: ${txId}`, txId)
+      console.log(txId)
+
+      setSendResult(txId.toString());
+      setMessage(`Successfully sent ${sendAmount} to "${sendNameInput}"!`);
+    } catch (error) {
+      console.error("Send error:", error);
+      setMessage(`Send failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -134,7 +243,7 @@ export default function Home() {
               Miden Name Service
             </h2>
             <p className="text-gray-300 mb-8">{message}</p>
-            
+
             {!connected ? (
               <>
                 <p className="text-yellow-400 text-sm mb-4">
@@ -151,28 +260,35 @@ export default function Home() {
                 <div className="flex gap-2 bg-gray-700 rounded-lg p-1 border border-gray-600">
                   <button
                     onClick={() => setActiveTab("register")}
-                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
-                      activeTab === "register"
-                        ? "bg-orange-500 text-white"
-                        : "bg-transparent text-gray-400 hover:text-gray-200"
-                    }`}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${activeTab === "register"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-400 hover:text-gray-200"
+                      }`}
                   >
                     Register Name
                   </button>
                   <button
                     onClick={() => setActiveTab("lookup")}
-                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
-                      activeTab === "lookup"
-                        ? "bg-orange-500 text-white"
-                        : "bg-transparent text-gray-400 hover:text-gray-200"
-                    }`}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${activeTab === "lookup"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-400 hover:text-gray-200"
+                      }`}
                   >
                     Lookup Name
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("send")}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${activeTab === "send"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-400 hover:text-gray-200"
+                      }`}
+                  >
+                    Send To Name
                   </button>
                 </div>
 
                 {/* Tab Content */}
-                {activeTab === "register" ? (
+                {activeTab === "register" && (
                   <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                     <h3 className="text-lg font-semibold text-orange-300 mb-4">
                       Register a Name
@@ -218,7 +334,9 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+
+                {activeTab === "lookup" && (
                   <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                     <h3 className="text-lg font-semibold text-orange-300 mb-4">
                       Lookup Name
@@ -271,6 +389,71 @@ export default function Home() {
                         </p>
                         <p className="text-yellow-300 text-xs mt-1">
                           This name is available for registration.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "send" && (
+                  <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+                    <h3 className="text-lg font-semibold text-orange-300 mb-4">
+                      Send To Name
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Enter a name and amount to send funds:
+                    </p>
+
+                    <div className="mb-4">
+                      <label className="block text-gray-300 text-sm mb-2">
+                        Recipient Name
+                      </label>
+                      <input
+                        type="text"
+                        value={sendNameInput}
+                        onChange={(e) => handleSendNameChange(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        placeholder="example"
+                        disabled={isSending}
+                        maxLength={36}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        {sendNameInput.length}/36 characters
+                      </p>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-gray-300 text-sm mb-2">
+                        Amount
+                      </label>
+                      <input
+                        type="text"
+                        value={sendAmount}
+                        onChange={(e) => handleSendAmountChange(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        placeholder="0.00"
+                        disabled={isSending}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        Enter the amount to send
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleSendToName}
+                      disabled={isSending}
+                      className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                      {isSending ? "Sending..." : "Send"}
+                    </button>
+
+                    {sendResult && (
+                      <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded-md">
+                        <p className="text-green-400 text-sm">
+                          ✅ Transaction submitted!
+                        </p>
+                        <p className="text-green-300 text-xs mt-1 break-all">
+                          Transaction ID: {sendResult}
                         </p>
                       </div>
                     )}
