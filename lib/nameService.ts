@@ -1,4 +1,4 @@
-import { A_CODE as a_CODE, ALPHABET_LENGTH, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
+import { A_CODE as a_CODE, ALPHABET_LENGTH, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_MAP_SLOT_IDX, NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
 import { Account, AccountId, Felt, WebClient, Word } from "@demox-labs/miden-sdk";
 
 // Encodes a string into 4 Felts
@@ -207,4 +207,37 @@ end
 
   // Return success message with transaction info
   return txId;
+}
+
+export async function lookupName(name: string): Promise<AccountId | undefined> {
+  const client = await WebClient.createClient(NODE_URL);
+
+  // Import the name service account into the client to be able to execute transactions against it,
+  // unless it is already imported.
+  let nameServiceAccount = await client.getAccount(NAME_SERVICE_ACCOUNT_ID);
+  if (!nameServiceAccount) {
+    await client.importAccountById(NAME_SERVICE_ACCOUNT_ID);
+    nameServiceAccount = await client.getAccount(NAME_SERVICE_ACCOUNT_ID);
+  }
+  await client.syncState()
+
+  if (!nameServiceAccount) {
+      throw new Error("failed to get name service account");
+  }
+
+  const encodedWord = encodeName(name);
+
+  let accountIdWord = nameServiceAccount.storage().getMapItem(NAME_MAP_SLOT_IDX, encodedWord);
+
+  if (!accountIdWord) {
+      return undefined
+  }
+
+  let accountIdFelts = accountIdWord.toFelts()
+  let prefix = accountIdFelts[0]
+  let suffix = accountIdFelts[1]
+  let hexId = prefix.toString() + suffix.toString()
+  console.log(prefix, suffix, hexId);
+
+  return AccountId.fromHex(hexId)
 }
