@@ -5,7 +5,7 @@ import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { registerName, lookupName, createSendTx } from "../lib/nameService";
 import { Address, NetworkId, Note, OutputNote, OutputNotesArray, TransactionRequestBuilder } from "@demox-labs/miden-sdk";
-import { MAX_TOTAL_NAME_LENGTH } from "@/lib/constants";
+import { MAX_TOTAL_NAME_LENGTH, NAME_EXISTS_ERROR } from "@/lib/constants";
 import { CustomTransaction, SendTransaction, Transaction, TransactionType } from "@demox-labs/miden-wallet-adapter-base";
 import { MidenWalletAdapter } from "@demox-labs/miden-wallet-adapter";
 
@@ -80,8 +80,12 @@ export default function Home() {
       setRegistrationResult(txId);
       setMessage(`Name "${name}" registered successfully!`);
     } catch (error) {
-      console.error("Registration error:", error);
-      setMessage(`Registration failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      if (error instanceof Error && error.message.includes(NAME_EXISTS_ERROR)) {
+        setMessage(`Registration failed: ${NAME_EXISTS_ERROR}`);
+      } else {
+        console.error("Registration error:", error);
+        setMessage(`Registration failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
     } finally {
       setIsRegistering(false);
     }

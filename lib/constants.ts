@@ -4,6 +4,7 @@ export const NODE_URL = "https://rpc.testnet.miden.io:443";
 // Replace with the actual name service account ID from deployment.
 export const NAME_SERVICE_ACCOUNT_ID = AccountId.fromHex("0xa15235a414026f10138ca845f2ae8f");
 export const NAME_MAP_SLOT_IDX = 0
+export const NAME_EXISTS_ERROR = "name is already registered"
 
 export const FELTS_PER_WORD = 4;
 export const MAX_CHARS_PER_FELT = 12;
