@@ -222,22 +222,34 @@ export async function lookupName(name: string): Promise<AccountId | undefined> {
   await client.syncState()
 
   if (!nameServiceAccount) {
-      throw new Error("failed to get name service account");
+    throw new Error("failed to get name service account");
   }
 
   const encodedWord = encodeName(name);
 
-  let accountIdWord = nameServiceAccount.storage().getMapItem(NAME_MAP_SLOT_IDX, encodedWord);
+  let lookupResult = nameServiceAccount.storage().getMapItem(NAME_MAP_SLOT_IDX, encodedWord);
 
-  if (!accountIdWord) {
+  if (!lookupResult) {
+    return undefined
+  }
+  console.log(`lookup: name ${name} resolved to Word ${lookupResult.toHex()}`)
+
+  // If the returned value is empty, the name is not mapped to anything.
+  let emptyWord = Word.newFromFelts([new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0))])
+  if (lookupResult.toHex() === emptyWord.toHex()) {
+      console.log(`lookup: name ${name} is not mapped to a value`)
       return undefined
   }
 
-  let accountIdFelts = accountIdWord.toFelts()
-  let prefix = accountIdFelts[0]
-  let suffix = accountIdFelts[1]
-  let hexId = prefix.toString() + suffix.toString()
-  console.log(prefix, suffix, hexId);
+  let accountIdFelts = lookupResult.toFelts()
+  let prefix = accountIdFelts[3].asInt()
+  let suffix = accountIdFelts[2].asInt()
+  let prefixHex = prefix.toString(16)
+  // We only need 7 bytes (= 14 hex characters)
+  let suffixHex = suffix.toString(16).substring(0, 14)
+  let hexId = `0x${prefixHex}${suffixHex}`
+
+  console.log(`lookup: name ${name} is mapped to accountID ${hexId}`)
 
   return AccountId.fromHex(hexId)
 }

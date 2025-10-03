@@ -3,15 +3,21 @@
 import React, { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
-import { registerName } from "../lib/nameService";
+import { registerName, lookupName } from "../lib/nameService";
 import { Address } from "@demox-labs/miden-sdk";
 import { MAX_TOTAL_NAME_LENGTH } from "@/lib/constants";
 
+type Tab = "register" | "lookup";
+
 export default function Home() {
   const [message, setMessage] = useState<string>("Connect your wallet to register names in the Miden Name Service.");
+  const [activeTab, setActiveTab] = useState<Tab>("register");
   const [name, setName] = useState<string>("");
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [registrationResult, setRegistrationResult] = useState<string>("");
+  const [lookupNameInput, setLookupNameInput] = useState<string>("");
+  const [isLookingUp, setIsLookingUp] = useState<boolean>(false);
+  const [lookupResult, setLookupResult] = useState<string>("");
 
   const {
     wallet,
@@ -74,6 +80,38 @@ export default function Home() {
     }
   };
 
+  const handleLookupNameChange = (value: string) => {
+    const filteredValue = value.toLowerCase().replace(/[^a-z]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH);
+    setLookupNameInput(filteredValue);
+  };
+
+  const handleLookupName = async () => {
+    if (!lookupNameInput.trim()) {
+      setMessage("Please enter a name to lookup!");
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupResult("");
+    setMessage("Looking up name...");
+
+    try {
+      const accountId = await lookupName(lookupNameInput);
+      if (accountId) {
+        setLookupResult(accountId.prefix().toString());
+        setMessage(`Name "${lookupNameInput}" is registered!`);
+      } else {
+        setLookupResult("not_found");
+        setMessage(`Name "${lookupNameInput}" is not registered.`);
+      }
+    } catch (error) {
+      console.error("Lookup error:", error);
+      setMessage(`Lookup failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-slate-100 relative">
       {/* Wallet Connect - Top Right */}
@@ -108,53 +146,136 @@ export default function Home() {
                 <p className="text-green-400 text-sm">
                   🎉 Wallet successfully connected!
                 </p>
-                
-                {/* Name Registration Form */}
-                <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
-                  <h3 className="text-lg font-semibold text-orange-300 mb-4">
-                    Register a Name
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Enter a name (lowercase letters only, max 36 characters):
-                  </p>
-                  
-                  <div className="mb-6">
-                    <label className="block text-gray-300 text-sm mb-2">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
-                      placeholder="example"
-                      disabled={isRegistering}
-                      maxLength={36}
-                    />
-                    <p className="text-gray-500 text-xs mt-1">
-                      {name.length}/36 characters
-                    </p>
-                  </div>
-                  
+
+                {/* Tab Navigation */}
+                <div className="flex gap-2 bg-gray-700 rounded-lg p-1 border border-gray-600">
                   <button
-                    onClick={handleRegisterName}
-                    disabled={isRegistering}
-                    className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                    onClick={() => setActiveTab("register")}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                      activeTab === "register"
+                        ? "bg-orange-500 text-white"
+                        : "bg-transparent text-gray-400 hover:text-gray-200"
+                    }`}
                   >
-                    {isRegistering ? "Registering..." : "Register Name"}
+                    Register Name
                   </button>
-                  
-                  {registrationResult && (
-                    <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded-md">
-                      <p className="text-green-400 text-sm">
-                        ✅ Registration successful!
-                      </p>
-                      <p className="text-green-300 text-xs mt-1 break-all">
-                        Transaction ID: {registrationResult}
+                  <button
+                    onClick={() => setActiveTab("lookup")}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition-all duration-200 ${
+                      activeTab === "lookup"
+                        ? "bg-orange-500 text-white"
+                        : "bg-transparent text-gray-400 hover:text-gray-200"
+                    }`}
+                  >
+                    Lookup Name
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                {activeTab === "register" ? (
+                  <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+                    <h3 className="text-lg font-semibold text-orange-300 mb-4">
+                      Register a Name
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Enter a name (lowercase letters only, max 36 characters):
+                    </p>
+
+                    <div className="mb-6">
+                      <label className="block text-gray-300 text-sm mb-2">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        placeholder="example"
+                        disabled={isRegistering}
+                        maxLength={36}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        {name.length}/36 characters
                       </p>
                     </div>
-                  )}
-                </div>
+
+                    <button
+                      onClick={handleRegisterName}
+                      disabled={isRegistering}
+                      className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                      {isRegistering ? "Registering..." : "Register Name"}
+                    </button>
+
+                    {registrationResult && (
+                      <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded-md">
+                        <p className="text-green-400 text-sm">
+                          ✅ Registration successful!
+                        </p>
+                        <p className="text-green-300 text-xs mt-1 break-all">
+                          Transaction ID: {registrationResult}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+                    <h3 className="text-lg font-semibold text-orange-300 mb-4">
+                      Lookup Name
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Enter a name to lookup its registered account:
+                    </p>
+
+                    <div className="mb-6">
+                      <label className="block text-gray-300 text-sm mb-2">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={lookupNameInput}
+                        onChange={(e) => handleLookupNameChange(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        placeholder="example"
+                        disabled={isLookingUp}
+                        maxLength={36}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        {lookupNameInput.length}/36 characters
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleLookupName}
+                      disabled={isLookingUp}
+                      className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                      {isLookingUp ? "Looking up..." : "Lookup Name"}
+                    </button>
+
+                    {lookupResult && lookupResult !== "not_found" && (
+                      <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded-md">
+                        <p className="text-green-400 text-sm">
+                          ✅ Name found!
+                        </p>
+                        <p className="text-green-300 text-xs mt-1 break-all">
+                          Account ID: {lookupResult}
+                        </p>
+                      </div>
+                    )}
+
+                    {lookupResult === "not_found" && (
+                      <div className="mt-4 p-3 bg-yellow-900 border border-yellow-700 rounded-md">
+                        <p className="text-yellow-400 text-sm">
+                          ℹ️ Name not found
+                        </p>
+                        <p className="text-yellow-300 text-xs mt-1">
+                          This name is available for registration.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <button
                   onClick={handleAction}
