@@ -1,7 +1,6 @@
 import { CustomTransaction } from "@demox-labs/miden-wallet-adapter";
 import { A_CODE as a_CODE, ALPHABET_LENGTH, DOT_MIDEN, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_MAP_SLOT_IDX, NAME_SERVICE_ACCOUNT_ID, NETWORK_ID, NODE_URL } from "./constants";
-import { Account, AccountId, AccountInterface, Assembler, Felt, FeltArray, FungibleAsset, Library, NetworkId, Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType, OutputNote, OutputNotesArray, TransactionKernel, TransactionRequestBuilder, TransactionScript, WebClient, Word } from "@demox-labs/miden-sdk";
-import { randomInt } from "crypto";
+import { AccountId, AccountInterface, Felt, FungibleAsset, Note, NoteAssets, NoteType, OutputNote, OutputNotesArray, TransactionRequestBuilder, WebClient, Word } from "@demox-labs/miden-sdk";
 
 // Validates a name input and returns an error message if invalid, or null if valid.
 //
@@ -130,7 +129,7 @@ export async function registerName(name: string, accountId: AccountId): Promise<
 
   // Strip .miden
   if (name.includes(DOT_MIDEN)) {
-      name = name.substring(0, (name.length - DOT_MIDEN.length))
+    name = name.substring(0, (name.length - DOT_MIDEN.length))
   }
 
   // Encode symbol to field elements
@@ -253,7 +252,7 @@ end
 export async function lookupName(name: string): Promise<AccountId | undefined> {
   // Strip .miden
   if (name.includes(DOT_MIDEN)) {
-      name = name.substring(0, (name.length - DOT_MIDEN.length))
+    name = name.substring(0, (name.length - DOT_MIDEN.length))
   }
 
   const client = await WebClient.createClient(NODE_URL);

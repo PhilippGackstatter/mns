@@ -7,10 +7,9 @@ export const dynamic = 'force-dynamic';
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { registerName, lookupName, createSendTx, validateName } from "../lib/nameService";
-import { Address, NetworkId, Note, OutputNote, OutputNotesArray, TransactionRequestBuilder } from "@demox-labs/miden-sdk";
-import { MAX_TOTAL_NAME_LENGTH, NAME_EXISTS_ERROR, NETWORK_ID } from "@/lib/constants";
-import { CustomTransaction, SendTransaction, Transaction, TransactionType } from "@demox-labs/miden-wallet-adapter-base";
-import { MidenWalletAdapter } from "@demox-labs/miden-wallet-adapter";
+import { Address } from "@demox-labs/miden-sdk";
+import { NAME_EXISTS_ERROR, NETWORK_ID } from "@/lib/constants";
+import { TransactionType } from "@demox-labs/miden-wallet-adapter-base";
 
 type Tab = "register" | "lookup" | "send";
 
