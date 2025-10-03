@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description: "A Miden-powered web application",
 };
 
+// Disable static optimization for pages using WASM
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{

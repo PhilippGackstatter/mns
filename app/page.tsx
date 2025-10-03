@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+
+// Disable static optimization for this page to avoid WASM prerender issues
+export const dynamic = 'force-dynamic';
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { registerName, lookupName, createSendTx, validateName } from "../lib/nameService";
