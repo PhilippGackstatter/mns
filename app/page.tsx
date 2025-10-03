@@ -39,6 +39,10 @@ export default function Home() {
     console.log("🧑‍💼 wallet", wallet);
   }, [rawAccountId, connected, wallet]);
 
+  const filterInput = (input: string): string => {
+      return input.toLowerCase().replace(/[^a-z\.]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH)
+  }
+
   const handleAction = async () => {
     if (!connected) {
       setMessage("Please connect your wallet first!");
@@ -49,8 +53,7 @@ export default function Home() {
   };
 
   const handleNameChange = (value: string) => {
-    // Only allow uppercase letters and limit to 36 characters
-    const filteredValue = value.toLowerCase().replace(/[^a-z]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH);
+    const filteredValue = filterInput(value)
     setName(filteredValue);
   };
 
@@ -92,7 +95,7 @@ export default function Home() {
   };
 
   const handleLookupNameChange = (value: string) => {
-    const filteredValue = value.toLowerCase().replace(/[^a-z]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH);
+    const filteredValue = filterInput(value)
     setLookupNameInput(filteredValue);
   };
 
@@ -124,7 +127,7 @@ export default function Home() {
   };
 
   const handleSendNameChange = (value: string) => {
-    const filteredValue = value.toLowerCase().replace(/[^a-z]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH);
+    const filteredValue = filterInput(value)
     setSendNameInput(filteredValue);
   };
 
@@ -303,7 +306,7 @@ export default function Home() {
                         value={name}
                         onChange={(e) => handleNameChange(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
-                        placeholder="example"
+                        placeholder="example.miden"
                         disabled={isRegistering}
                         maxLength={36}
                       />
@@ -351,7 +354,7 @@ export default function Home() {
                         value={lookupNameInput}
                         onChange={(e) => handleLookupNameChange(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
-                        placeholder="example"
+                        placeholder="example.miden"
                         disabled={isLookingUp}
                         maxLength={36}
                       />
@@ -410,7 +413,7 @@ export default function Home() {
                         value={sendNameInput}
                         onChange={(e) => handleSendNameChange(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
-                        placeholder="example"
+                        placeholder="example.miden"
                         disabled={isSending}
                         maxLength={36}
                       />
