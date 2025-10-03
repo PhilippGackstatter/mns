@@ -9,7 +9,7 @@ A decentralized name service built on the Miden blockchain that allows users to 
 
 The Miden Name Service (MNS) is a blockchain-based naming system that provides:
 
-- **Name Registration**: Register lowercase alphabetic names (a-z, up to 36 characters) 
+- **Name Registration**: Register lowercase alphabetic names
 - **Account Mapping**: Associate names with Miden account IDs
 - **Smart Contract Backend**: Implemented in Miden Assembly (MASM) for on-chain storage and validation
 - **Web Interface**: React/Next.js frontend with Miden wallet integration
@@ -68,3 +68,10 @@ Copy the account ID and replace `NAME_SERVICE_ACCOUNT_ID` in `constants.ts`.
    ```
 
 3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Future Extensions
+
+- Make name service account a network account
+- Allow on-chain lookups, possibly combined with a dedicated "Pay-to-Name" note.
+- Allow storing address information next to the account ID
+- Allow updating to which account ID a name maps
