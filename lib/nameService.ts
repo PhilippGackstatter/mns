@@ -1,5 +1,7 @@
+import { CustomTransaction } from "@demox-labs/miden-wallet-adapter";
 import { A_CODE as a_CODE, ALPHABET_LENGTH, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_MAP_SLOT_IDX, NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
-import { Account, AccountId, Felt, WebClient, Word } from "@demox-labs/miden-sdk";
+import { Account, AccountId, AccountInterface, Assembler, Felt, FeltArray, FungibleAsset, Library, NetworkId, Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType, OutputNote, OutputNotesArray, TransactionKernel, TransactionRequestBuilder, TransactionScript, WebClient, Word } from "@demox-labs/miden-sdk";
+import { randomInt } from "crypto";
 
 // Encodes a string into 4 Felts
 export function encodeName(s: string): Word {
@@ -214,12 +216,12 @@ export async function lookupName(name: string): Promise<AccountId | undefined> {
 
   // Import the name service account into the client to be able to execute transactions against it,
   // unless it is already imported.
-  let nameServiceAccount = await client.getAccount(NAME_SERVICE_ACCOUNT_ID);
-  if (!nameServiceAccount) {
+  if (!await client.getAccount(NAME_SERVICE_ACCOUNT_ID)) {
     await client.importAccountById(NAME_SERVICE_ACCOUNT_ID);
-    nameServiceAccount = await client.getAccount(NAME_SERVICE_ACCOUNT_ID);
   }
   await client.syncState()
+
+  let nameServiceAccount = await client.getAccount(NAME_SERVICE_ACCOUNT_ID);
 
   if (!nameServiceAccount) {
     throw new Error("failed to get name service account");
@@ -237,8 +239,8 @@ export async function lookupName(name: string): Promise<AccountId | undefined> {
   // If the returned value is empty, the name is not mapped to anything.
   let emptyWord = Word.newFromFelts([new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0)), new Felt(BigInt(0))])
   if (lookupResult.toHex() === emptyWord.toHex()) {
-      console.log(`lookup: name ${name} is not mapped to a value`)
-      return undefined
+    console.log(`lookup: name ${name} is not mapped to a value`)
+    return undefined
   }
 
   let accountIdFelts = lookupResult.toFelts()
@@ -252,4 +254,31 @@ export async function lookupName(name: string): Promise<AccountId | undefined> {
   console.log(`lookup: name ${name} is mapped to accountID ${hexId}`)
 
   return AccountId.fromHex(hexId)
+}
+
+export function createSendTx(
+  senderId: AccountId,
+  recipientId: AccountId,
+  faucetId: AccountId,
+  amount: bigint,
+): CustomTransaction {
+  const noteAssets = new NoteAssets([new FungibleAsset(faucetId, amount)])
+  let note = Note.createP2IDNote(senderId, recipientId, noteAssets, NoteType.Public, new Felt(BigInt(0)))
+
+  console.log(`send: creating P2ID note ${note.id().toString()}`)
+
+  let transactionRequest = new TransactionRequestBuilder()
+    .withOwnOutputNotes(
+      new OutputNotesArray([OutputNote.full(note)])
+    )
+    .build();
+
+  return new CustomTransaction(
+    senderId.toBech32(NetworkId.Testnet, AccountInterface.Unspecified),
+    recipientId.toBech32(NetworkId.Testnet, AccountInterface.Unspecified),
+    transactionRequest,
+    [],
+    []
+  );
+
 }

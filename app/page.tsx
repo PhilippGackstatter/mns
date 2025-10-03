@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
-import { registerName, lookupName } from "../lib/nameService";
-import { Address, NetworkId } from "@demox-labs/miden-sdk";
+import { registerName, lookupName, createSendTx } from "../lib/nameService";
+import { Address, NetworkId, Note, OutputNote, OutputNotesArray, TransactionRequestBuilder } from "@demox-labs/miden-sdk";
 import { MAX_TOTAL_NAME_LENGTH } from "@/lib/constants";
 import { CustomTransaction, SendTransaction, Transaction, TransactionType } from "@demox-labs/miden-wallet-adapter-base";
 import { MidenWalletAdapter } from "@demox-labs/miden-wallet-adapter";
@@ -181,13 +181,11 @@ export default function Home() {
       // SAFETY: At least one asset should be available.
       const asset = assets.pop()!
 
-      let sendAmountBigInt = BigInt(sendAmount)
+      let sendAmountBigInt = BigInt(sendAmount) * BigInt(1_000_000)
       if (sendAmountBigInt > BigInt(asset.amount)) {
         setMessage(`Attempted to send ${sendAmountBigInt} but only ${asset.amount} of asset ${asset.faucetId} is available.`);
         return;
       }
-      // Questionable conversion
-      let sendAmountNum = Number(sendAmountBigInt) * 1_000_000
 
       // Request the transaction through the wallet adapter
       if (!requestTransaction) {
@@ -195,21 +193,16 @@ export default function Home() {
         return;
       }
 
-      const midenTransaction = new SendTransaction(
-        rawAccountId!,
-        recipientId,
-        asset.faucetId,
-        'public',
-        sendAmountNum
-      );
+      const senderId = Address.fromBech32(rawAccountId!)
+      const faucetId = Address.fromBech32(asset.faucetId)
+      const sendTx = createSendTx(senderId.accountId(), recipientAccountId, faucetId.accountId(), sendAmountBigInt);
 
-      const txId =
-        (await (wallet?.adapter as MidenWalletAdapter).requestSend(
-          midenTransaction
-        ));
+      const txId = await requestTransaction({
+        type: TransactionType.Custom,
+        payload: sendTx,
+      });
 
-      console.log(`done request send: ${txId}`, txId)
-      console.log(txId)
+      console.log(`send: requested transaction ${txId}`)
 
       setSendResult(txId.toString());
       setMessage(`Successfully sent ${sendAmount} to "${sendNameInput}"!`);
