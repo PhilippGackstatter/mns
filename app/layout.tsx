@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Miden Web App",
-  description: "A Miden-powered web application",
+  title: "Miden Name Service",
+  description: "Mapping names to Miden account IDs",
 };
 
 // Disable static optimization for pages using WASM
