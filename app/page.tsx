@@ -3,16 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
-import { registerName, lookupName, createSendTx } from "../lib/nameService";
+import { registerName, lookupName, createSendTx, validateName } from "../lib/nameService";
 import { Address, NetworkId, Note, OutputNote, OutputNotesArray, TransactionRequestBuilder } from "@demox-labs/miden-sdk";
-import { MAX_TOTAL_NAME_LENGTH, NAME_EXISTS_ERROR } from "@/lib/constants";
+import { MAX_TOTAL_NAME_LENGTH, NAME_EXISTS_ERROR, NETWORK_ID } from "@/lib/constants";
 import { CustomTransaction, SendTransaction, Transaction, TransactionType } from "@demox-labs/miden-wallet-adapter-base";
 import { MidenWalletAdapter } from "@demox-labs/miden-wallet-adapter";
 
 type Tab = "register" | "lookup" | "send";
 
 export default function Home() {
-  const [message, setMessage] = useState<string>("Connect your wallet to register names in the Miden Name Service.");
+  const [message, setMessage] = useState<string>("TODO: Miden Name Service");
   const [activeTab, setActiveTab] = useState<Tab>("register");
   const [name, setName] = useState<string>("");
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
@@ -24,6 +24,9 @@ export default function Home() {
   const [sendAmount, setSendAmount] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [sendResult, setSendResult] = useState<string>("");
+  const [nameValidationError, setNameValidationError] = useState<string | null>(null);
+  const [lookupNameValidationError, setLookupNameValidationError] = useState<string | null>(null);
+  const [sendNameValidationError, setSendNameValidationError] = useState<string | null>(null);
 
   const {
     wallet,
@@ -39,10 +42,6 @@ export default function Home() {
     console.log("🧑‍💼 wallet", wallet);
   }, [rawAccountId, connected, wallet]);
 
-  const filterInput = (input: string): string => {
-      return input.toLowerCase().replace(/[^a-z\.]/g, '').slice(0, MAX_TOTAL_NAME_LENGTH)
-  }
-
   const handleAction = async () => {
     if (!connected) {
       setMessage("Please connect your wallet first!");
@@ -53,8 +52,9 @@ export default function Home() {
   };
 
   const handleNameChange = (value: string) => {
-    const filteredValue = filterInput(value)
-    setName(filteredValue);
+    setName(value);
+    const error = validateName(value);
+    setNameValidationError(error);
   };
 
   const handleRegisterName = async () => {
@@ -95,8 +95,9 @@ export default function Home() {
   };
 
   const handleLookupNameChange = (value: string) => {
-    const filteredValue = filterInput(value)
-    setLookupNameInput(filteredValue);
+    setLookupNameInput(value);
+    const error = validateName(value);
+    setLookupNameValidationError(error);
   };
 
   const handleLookupName = async () => {
@@ -112,7 +113,7 @@ export default function Home() {
     try {
       const accountId = await lookupName(lookupNameInput);
       if (accountId) {
-        setLookupResult(Address.fromAccountId(accountId, "Unspecified").toBech32(NetworkId.Testnet));
+        setLookupResult(Address.fromAccountId(accountId, "Unspecified").toBech32(NETWORK_ID));
         setMessage(`Name "${lookupNameInput}" is registered!`);
       } else {
         setLookupResult("not_found");
@@ -127,8 +128,9 @@ export default function Home() {
   };
 
   const handleSendNameChange = (value: string) => {
-    const filteredValue = filterInput(value)
-    setSendNameInput(filteredValue);
+    setSendNameInput(value);
+    const error = validateName(value);
+    setSendNameValidationError(error);
   };
 
   const handleSendAmountChange = (value: string) => {
@@ -171,8 +173,8 @@ export default function Home() {
         return;
       }
 
-      const recipientId = recipientAccountId.toString();
-      setMessage(`Name resolved to ${recipientId}... Initiating send...`);
+      const recipientIdBech32 = Address.fromAccountId(recipientAccountId, "Unspecified").toBech32(NETWORK_ID);
+      setMessage(`Name resolved to ${recipientIdBech32}... Initiating send...`);
 
       // Request available assets through the wallet adapter
       if (!requestAssets) {
@@ -252,9 +254,6 @@ export default function Home() {
               </>
             ) : (
               <div className="space-y-6">
-                <p className="text-green-400 text-sm">
-                  🎉 Wallet successfully connected!
-                </p>
 
                 {/* Tab Navigation */}
                 <div className="flex gap-2 bg-gray-700 rounded-lg p-1 border border-gray-600">
@@ -305,19 +304,28 @@ export default function Home() {
                         type="text"
                         value={name}
                         onChange={(e) => handleNameChange(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${nameValidationError
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-gray-500 focus:ring-orange-500'
+                          }`}
                         placeholder="example.miden"
                         disabled={isRegistering}
                         maxLength={36}
                       />
-                      <p className="text-gray-500 text-xs mt-1">
-                        {name.length}/36 characters
-                      </p>
+                      {nameValidationError ? (
+                        <p className="text-red-400 text-xs mt-1">
+                          ⚠️ {nameValidationError}
+                        </p>
+                      ) : (
+                        <p className="text-gray-500 text-xs mt-1">
+                          {name.length}/36 characters
+                        </p>
+                      )}
                     </div>
 
                     <button
                       onClick={handleRegisterName}
-                      disabled={isRegistering}
+                      disabled={isRegistering || !!nameValidationError}
                       className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       {isRegistering ? "Registering..." : "Register Name"}
@@ -353,19 +361,28 @@ export default function Home() {
                         type="text"
                         value={lookupNameInput}
                         onChange={(e) => handleLookupNameChange(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${lookupNameValidationError
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-gray-500 focus:ring-orange-500'
+                          }`}
                         placeholder="example.miden"
                         disabled={isLookingUp}
                         maxLength={36}
                       />
-                      <p className="text-gray-500 text-xs mt-1">
-                        {lookupNameInput.length}/36 characters
-                      </p>
+                      {lookupNameValidationError ? (
+                        <p className="text-red-400 text-xs mt-1">
+                          ⚠️ {lookupNameValidationError}
+                        </p>
+                      ) : (
+                        <p className="text-gray-500 text-xs mt-1">
+                          {lookupNameInput.length}/36 characters
+                        </p>
+                      )}
                     </div>
 
                     <button
                       onClick={handleLookupName}
-                      disabled={isLookingUp}
+                      disabled={isLookingUp || !!lookupNameValidationError}
                       className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       {isLookingUp ? "Looking up..." : "Lookup Name"}
@@ -412,14 +429,23 @@ export default function Home() {
                         type="text"
                         value={sendNameInput}
                         onChange={(e) => handleSendNameChange(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-mono"
+                        className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${sendNameValidationError
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-gray-500 focus:ring-orange-500'
+                          }`}
                         placeholder="example.miden"
                         disabled={isSending}
                         maxLength={36}
                       />
-                      <p className="text-gray-500 text-xs mt-1">
-                        {sendNameInput.length}/36 characters
-                      </p>
+                      {sendNameValidationError ? (
+                        <p className="text-red-400 text-xs mt-1">
+                          ⚠️ {sendNameValidationError}
+                        </p>
+                      ) : (
+                        <p className="text-gray-500 text-xs mt-1">
+                          {sendNameInput.length}/36 characters
+                        </p>
+                      )}
                     </div>
 
                     <div className="mb-6">
@@ -441,7 +467,7 @@ export default function Home() {
 
                     <button
                       onClick={handleSendToName}
-                      disabled={isSending}
+                      disabled={isSending || !!sendNameValidationError}
                       className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       {isSending ? "Sending..." : "Send"}

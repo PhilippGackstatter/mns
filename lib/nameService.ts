@@ -1,7 +1,41 @@
 import { CustomTransaction } from "@demox-labs/miden-wallet-adapter";
-import { A_CODE as a_CODE, ALPHABET_LENGTH, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_MAP_SLOT_IDX, NAME_SERVICE_ACCOUNT_ID, NODE_URL } from "./constants";
+import { A_CODE as a_CODE, ALPHABET_LENGTH, DOT_MIDEN, FELTS_PER_WORD, MAX_CHARS_PER_FELT, MAX_TOTAL_NAME_LENGTH, NAME_MAP_SLOT_IDX, NAME_SERVICE_ACCOUNT_ID, NETWORK_ID, NODE_URL } from "./constants";
 import { Account, AccountId, AccountInterface, Assembler, Felt, FeltArray, FungibleAsset, Library, NetworkId, Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType, OutputNote, OutputNotesArray, TransactionKernel, TransactionRequestBuilder, TransactionScript, WebClient, Word } from "@demox-labs/miden-sdk";
 import { randomInt } from "crypto";
+
+// Validates a name input and returns an error message if invalid, or null if valid.
+//
+// Rules:
+// - Only lowercase letters (a-z) are allowed
+// - Must end with ".miden"
+// - Maximum length is MAX_TOTAL_NAME_LENGTH characters (_excluding_ ".miden")
+//
+// # Returns
+// An error message string if invalid, or null if valid
+export function validateName(name: string): string | null {
+  if (name.length === 0) {
+    // Empty is valid (user is still typing)
+    return null;
+  }
+
+  // Check for invalid characters (not lowercase letters or period)
+  const invalidChars = name.match(/[^a-z.]/g);
+  if (invalidChars) {
+    return `Only lowercase letters and '.' are allowed`;
+  }
+
+  // Check if it ends with .miden
+  if (!name.endsWith(DOT_MIDEN)) {
+    return `Name must end with ${DOT_MIDEN}`;
+  }
+
+  // Check length against name without .miden
+  if ((name.length - DOT_MIDEN.length) > MAX_TOTAL_NAME_LENGTH) {
+    return `Name must be at most ${MAX_TOTAL_NAME_LENGTH} characters`;
+  }
+
+  return null;
+}
 
 // Encodes a string into 4 Felts
 export function encodeName(s: string): Word {
@@ -92,6 +126,11 @@ export async function registerName(name: string, accountId: AccountId): Promise<
   if (typeof window === "undefined") {
     console.warn("registerName() can only run in the browser");
     return "";
+  }
+
+  // Strip .miden
+  if (name.includes(DOT_MIDEN)) {
+      name = name.substring(0, (name.length - DOT_MIDEN.length))
   }
 
   // Encode symbol to field elements
@@ -212,6 +251,11 @@ end
 }
 
 export async function lookupName(name: string): Promise<AccountId | undefined> {
+  // Strip .miden
+  if (name.includes(DOT_MIDEN)) {
+      name = name.substring(0, (name.length - DOT_MIDEN.length))
+  }
+
   const client = await WebClient.createClient(NODE_URL);
 
   // Import the name service account into the client to be able to execute transactions against it,
@@ -274,8 +318,8 @@ export function createSendTx(
     .build();
 
   return new CustomTransaction(
-    senderId.toBech32(NetworkId.Testnet, AccountInterface.Unspecified),
-    recipientId.toBech32(NetworkId.Testnet, AccountInterface.Unspecified),
+    senderId.toBech32(NETWORK_ID, AccountInterface.Unspecified),
+    recipientId.toBech32(NETWORK_ID, AccountInterface.Unspecified),
     transactionRequest,
     [],
     []
