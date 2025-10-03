@@ -9,7 +9,7 @@ import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { registerName, lookupName, createSendTx, validateName } from "../lib/nameService";
 import { Address } from "@demox-labs/miden-sdk";
 import { NAME_EXISTS_ERROR, NETWORK_ID } from "@/lib/constants";
-import { TransactionType } from "@demox-labs/miden-wallet-adapter-base";
+import { TransactionType } from "@demox-labs/miden-wallet-adapter";
 
 type Tab = "register" | "lookup" | "send";
 
