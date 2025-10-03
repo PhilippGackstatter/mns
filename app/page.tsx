@@ -182,7 +182,17 @@ export default function Home() {
       // SAFETY: At least one asset should be available.
       const asset = assets.pop()!
 
-      let sendAmountBigInt = BigInt(sendAmount) * BigInt(1_000_000)
+      let split = sendAmount.split(".");
+      // Assume 6 decimals for now.
+      // TODO: Read from token metadata.
+      const numDecimals = 6
+      let sendAmountBigInt = BigInt(split[0]) * BigInt(Math.pow(10, numDecimals))
+      if (split.length > 1) {
+        let decimalAmount = BigInt(split[1].padEnd(numDecimals, "0"))
+        sendAmountBigInt += decimalAmount
+      }
+      console.log("sendamount", sendAmountBigInt)
+
       if (sendAmountBigInt > BigInt(asset.amount)) {
         setMessage(`Attempted to send ${sendAmountBigInt} but only ${asset.amount} of asset ${asset.faucetId} is available.`);
         return;
@@ -308,8 +318,8 @@ export default function Home() {
                         value={name}
                         onChange={(e) => handleNameChange(e.target.value)}
                         className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${nameValidationError
-                            ? 'border-red-500 focus:ring-red-500'
-                            : 'border-gray-500 focus:ring-orange-500'
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-500 focus:ring-orange-500'
                           }`}
                         placeholder="example.miden"
                         disabled={isRegistering}
@@ -365,8 +375,8 @@ export default function Home() {
                         value={lookupNameInput}
                         onChange={(e) => handleLookupNameChange(e.target.value)}
                         className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${lookupNameValidationError
-                            ? 'border-red-500 focus:ring-red-500'
-                            : 'border-gray-500 focus:ring-orange-500'
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-500 focus:ring-orange-500'
                           }`}
                         placeholder="example.miden"
                         disabled={isLookingUp}
@@ -443,8 +453,8 @@ export default function Home() {
                         value={sendNameInput}
                         onChange={(e) => handleSendNameChange(e.target.value)}
                         className={`w-full px-4 py-3 bg-gray-600 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent text-lg font-mono ${sendNameValidationError
-                            ? 'border-red-500 focus:ring-red-500'
-                            : 'border-gray-500 focus:ring-orange-500'
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-500 focus:ring-orange-500'
                           }`}
                         placeholder="example.miden"
                         disabled={isSending}
